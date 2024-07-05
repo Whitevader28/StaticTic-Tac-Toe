@@ -155,12 +155,14 @@ function onCellClick(element, turn, score) {
 
     // Freeze the board and wait for reset click
     waitResetInput(turn);
+    return;
   }
 
-  if (turn >= 8) {
+  if (turn.number >= 8) {
     // Update message
     document.getElementById("winner").innerHTML = "It's a draw :((";
     waitResetInput(turn);
+    return;
   }
 
   turn.number++;
