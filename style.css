@@ -34,3 +34,7 @@
 #col2 {
   border-right: 2px solid black;
 }
+
+.selected-btn {
+  background-color: darkcyan;
+}

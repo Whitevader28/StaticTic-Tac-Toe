@@ -17,6 +17,11 @@ const cell = [
 const score = { scoreX: 0, score0: 0 };
 let cellData = [];
 const autoPlay = { on: false };
+const easyOptions = { center: 0.75, corner: 0.75, slopiness: 0.75 };
+const mediumOptions = { center: 0.75, corner: 0.25, slopiness: 0.5 };
+const hardOptions = { center: 0.75, corner: 0.25, slopiness: 0.25 };
+const insaneOptions = { center: 0.75, corner: 0.5, slopiness: 0.1 };
+const option = { option: mediumOptions }; // the actual option
 
 // All except turn ar treated as global variables
 const turn = { number: 0 };
@@ -30,6 +35,39 @@ function flipAutoPlayBtn(turn) {
   // if it is computer's turn (O turn)
   if (autoPlay.on && turn.number % 2 == 1) {
     computerMove(turn);
+  }
+}
+
+function flipBtn(element) {
+  if (element.className == "unselected-btn option-btn") {
+    const selected = document.getElementsByClassName("selected-btn");
+    for (select of selected) {
+      if (select.className == "selected-btn option-btn")
+        select.className = "unselected-btn option-btn";
+    }
+    element.className = "selected-btn option-btn";
+
+    switch (element.id) {
+      case "easy-btn":
+        option.option = easyOptions;
+        break;
+      case "medium-btn":
+        option.option = mediumOptions;
+        break;
+      case "hard-btn":
+        option.option = hardOptions;
+        break;
+      case "insane-btn":
+        option.option = insaneOptions;
+        break;
+      default:
+        option.option = mediumOptions;
+        break;
+    }
+  } else if (element.className == "unselected-btn") {
+    element.className = "selected-btn";
+  } else if (element.className == "selected-btn") {
+    element.className = "unselected-btn";
   }
 }
 
@@ -127,15 +165,16 @@ function checkWinner(turn, cellData, draw = false) {
   return false;
 }
 
-function getBestMove(turn) {
+// medium by default
+function getBestMove(turn, options = mediumOptions) {
   var best = -1;
   let possibleMoves = [];
   let corners = [];
 
   // playstyle parameters in range [0, 1]
-  let x = Math.random() <= 0.75; // center bias (comes first)
-  let y = Math.random() <= 0.75; // corners bias
-  let z = Math.random() <= 0.75; // sloppines (not blocking a player winning move)
+  let x = Math.random() <= options.center; // center bias (comes first)
+  let y = Math.random() <= options.corner; // corners bias
+  let z = Math.random() <= options.slopiness; // sloppines (not blocking a player winning move)
 
   for (let i = 0; i < cell.length; ++i) {
     // // dumb mode: gets last available position
@@ -215,7 +254,7 @@ function verifyStopConditions(turn, current) {
   const isWinner = checkWinner(turn.number, cellData, true);
   if (isWinner) {
     document.getElementById("winner").innerHTML =
-      "Winner is " + current + ". Click anywhere to restart";
+      "Winner is " + current + ". Click to restart";
 
     // Set score for the winner (the current turn)
     setScore(current);
@@ -225,7 +264,8 @@ function verifyStopConditions(turn, current) {
     return 1;
   }
   if (turn.number >= 8) {
-    document.getElementById("winner").innerHTML = "It's a draw :((";
+    document.getElementById("winner").innerHTML =
+      "It's a draw :(( Click to restart";
     waitResetInput(turn);
     return 1;
   }
@@ -234,14 +274,14 @@ function verifyStopConditions(turn, current) {
 }
 
 function computerMove(turn) {
-  const poz = getBestMove(turn.number);
+  const poz = getBestMove(turn.number, option.option);
   cell[poz].innerHTML = "O";
   cellData[poz] = "O";
   if (verifyStopConditions(turn, "O")) {
     return;
   }
   turn.number++;
-  currentTurn.innerHTML = current;
+  currentTurn.innerHTML = "O";
 }
 
 const onCellClickEvent = function (e) {
@@ -275,20 +315,27 @@ function onCellClick(element, turn, autoPlay, score) {
     //TODO: fake thinking
 
     computerMove(turn);
-    // const poz = getBestMove(turn.number);
-    // cell[poz].innerHTML = other;
-    // cellData[poz] = other;
-
-    // if (verifyStopConditions(turn, other)) {
-    //   return;
-    // }
-
-    // turn.number++;
-    // currentTurn.innerHTML = current;
   }
 }
 
 resetBoard(turn);
+
+// Manage buttons
 document.getElementById("autoPlay-btn").addEventListener("click", function (e) {
   flipAutoPlayBtn(turn);
 });
+
+const buttons = document.getElementsByClassName("unselected-btn");
+
+for (let button of buttons) {
+  button.addEventListener("click", function (e) {
+    flipBtn(this);
+  });
+}
+
+// There is only one selected button by default (the default difficulty option)
+document
+  .getElementsByClassName("selected-btn")[0]
+  .addEventListener("click", function (e) {
+    flipBtn(this);
+  });
