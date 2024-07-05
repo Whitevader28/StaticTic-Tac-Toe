@@ -107,6 +107,27 @@ function checkWinner(turn) {
   }
 }
 
+function waitResetInput(turn) {
+  cell.forEach((cell) => cell.removeEventListener("click", onCellClickEvent));
+  document.addEventListener(
+    "click",
+    function (e) {
+      resetBoard(turn);
+    },
+    { once: true }
+  );
+}
+
+function setScore(winner) {
+  if (winner == "X") {
+    score.scoreX++;
+    document.getElementById("scoreX").innerHTML = score.scoreX;
+  } else {
+    score.score0++;
+    document.getElementById("score0").innerHTML = score.score0;
+  }
+}
+
 const onCellClickEvent = function (e) {
   onCellClick(this, turn, score);
   e.stopPropagation();
@@ -129,39 +150,17 @@ function onCellClick(element, turn, score) {
     document.getElementById("winner").innerHTML =
       "Winner is " + current + ". Click anywhere to restart";
 
-    // Set score
-    if (current == "X") {
-      score.scoreX++;
-      document.getElementById("scoreX").innerHTML = score.scoreX;
-    } else {
-      score.score0++;
-      document.getElementById("score0").innerHTML = score.score0;
-    }
+    // Set score for the winner (the current turn)
+    setScore(current);
 
-    // Prepare board for reset
-    cell.forEach((cell) => cell.removeEventListener("click", onCellClickEvent));
-    document.body.addEventListener(
-      "click",
-      function (e) {
-        resetBoard(turn);
-      },
-      { once: true }
-    );
+    // Freeze the board and wait for reset click
+    waitResetInput(turn);
   }
 
   if (turn >= 8) {
     // Update message
     document.getElementById("winner").innerHTML = "It's a draw :((";
-
-    // Prepare board for reset
-    cell.forEach((cell) => cell.removeEventListener("click", onCellClickEvent));
-    document.body.addEventListener(
-      "click",
-      function (e) {
-        resetBoard(turn);
-      },
-      { once: true }
-    );
+    waitResetInput(turn);
   }
 
   turn.number++;
