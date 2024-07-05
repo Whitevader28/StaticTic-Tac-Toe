@@ -13,19 +13,37 @@ const cell = [
 
 // Get the element for updating the current turn
 // X starts the game with turn 0
-const turn = { number: 0 };
+// We use cell data to be able to pass a copy of the board around
 const score = { scoreX: 0, score0: 0 };
+let cellData = [];
+const autoPlay = { on: false };
+
+// All except turn ar treated as global variables
+const turn = { number: 0 };
+
+function flipAutoPlayBtn(turn) {
+  autoPlay.on = !autoPlay.on;
+  document.getElementById("autoPlay-btn").innerHTML = autoPlay.on
+    ? "ON"
+    : "OFF";
+
+  // if it is computer's turn (O turn)
+  if (autoPlay.on && turn.number % 2 == 1) {
+    computerMove(turn);
+  }
+}
 
 function resetBoard(turn) {
   turn.number = 0;
   cell.forEach((cell) => (cell.innerHTML = ""));
+  cellData = [];
   cell.forEach((cell) => cell.addEventListener("click", onCellClickEvent));
 
   document.getElementById("winner").innerHTML =
     'It\'s <span id="currentTurn">X</span> turn';
 }
 
-function checkWinner(turn) {
+function checkWinner(turn, cellData, draw = false) {
   // return false for not yet decided
   // return true for the current turn winner
   if (turn < 3) return false;
@@ -34,27 +52,27 @@ function checkWinner(turn) {
 
   // check rows
   if (
-    cell[0].innerHTML == current &&
-    cell[0].innerHTML == cell[1].innerHTML &&
-    cell[0].innerHTML == cell[2].innerHTML
+    cellData[0] == current &&
+    cellData[0] == cellData[1] &&
+    cellData[0] == cellData[2]
   ) {
     // draw first row
     return true;
   }
 
   if (
-    cell[3].innerHTML == current &&
-    cell[3].innerHTML == cell[4].innerHTML &&
-    cell[3].innerHTML == cell[5].innerHTML
+    cellData[3] == current &&
+    cellData[3] == cellData[4] &&
+    cellData[3] == cellData[5]
   ) {
     // draw second row
     return true;
   }
 
   if (
-    cell[6].innerHTML == current &&
-    cell[6].innerHTML == cell[7].innerHTML &&
-    cell[6].innerHTML == cell[8].innerHTML
+    cellData[6] == current &&
+    cellData[6] == cellData[7] &&
+    cellData[6] == cellData[8]
   ) {
     // draw third row
     return true;
@@ -62,26 +80,26 @@ function checkWinner(turn) {
 
   // check columns
   if (
-    cell[0].innerHTML == current &&
-    cell[0].innerHTML == cell[3].innerHTML &&
-    cell[0].innerHTML == cell[6].innerHTML
+    cellData[0] == current &&
+    cellData[0] == cellData[3] &&
+    cellData[0] == cellData[6]
   ) {
     //1 row
     return true;
   }
   if (
-    cell[1].innerHTML == current &&
-    cell[1].innerHTML == cell[4].innerHTML &&
-    cell[1].innerHTML == cell[7].innerHTML
+    cellData[1] == current &&
+    cellData[1] == cellData[4] &&
+    cellData[1] == cellData[7]
   ) {
     //2 row
     return true;
   }
 
   if (
-    cell[2].innerHTML == current &&
-    cell[2].innerHTML == cell[5].innerHTML &&
-    cell[2].innerHTML == cell[8].innerHTML
+    cellData[2] == current &&
+    cellData[2] == cellData[5] &&
+    cellData[2] == cellData[8]
   ) {
     // 3 row
     return true;
@@ -89,22 +107,87 @@ function checkWinner(turn) {
 
   // check diagonals
   if (
-    cell[0].innerHTML == current &&
-    cell[0].innerHTML == cell[4].innerHTML &&
-    cell[0].innerHTML == cell[8].innerHTML
+    cellData[0] == current &&
+    cellData[0] == cellData[4] &&
+    cellData[0] == cellData[8]
   ) {
     // main
     return true;
   }
 
   if (
-    cell[2].innerHTML == current &&
-    cell[2].innerHTML == cell[4].innerHTML &&
-    cell[2].innerHTML == cell[6].innerHTML
+    cellData[2] == current &&
+    cellData[2] == cellData[4] &&
+    cellData[2] == cellData[6]
   ) {
     // second diag
     return true;
   }
+
+  return false;
+}
+
+function getBestMove(turn) {
+  var best = -1;
+  let possibleMoves = [];
+  let corners = [];
+
+  // playstyle parameters in range [0, 1]
+  let x = Math.random() <= 0.75; // center bias (comes first)
+  let y = Math.random() <= 0.75; // corners bias
+  let z = Math.random() <= 0.75; // sloppines (not blocking a player winning move)
+
+  for (let i = 0; i < cell.length; ++i) {
+    // // dumb mode: gets last available position
+    // if (!cellData[i]) {
+    //   best = i;
+    // }
+
+    if (cellData[i] == null) {
+      cellData[i] = "O";
+      const isWinnerPC = checkWinner(turn, cellData);
+      if (isWinnerPC) {
+        // if we return the winning move we don't care for defensive moves
+        return i;
+      }
+
+      cellData[i] = "X";
+      const isWinnerPlayer = checkWinner(turn + 1, cellData);
+      if (isWinnerPlayer) {
+        // if computer is not sloppy it blocks
+        if (z == 0) {
+          best = i;
+        }
+      }
+      cellData[i] = null;
+
+      // conquer the center x% of the time
+      if (best == -1 && i == 4 && x) {
+        best = i;
+      } else {
+        possibleMoves.push(i);
+        switch (i) {
+          case 0:
+          case 2:
+          case 6:
+          case 8:
+            corners.push(i);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  }
+
+  // conquer corners y% of the time if there are any
+  if (best == -1 && y && corners.length) {
+    best = corners[Math.floor(Math.random(corners.length))];
+  } else if (best == -1) {
+    best = possibleMoves[Math.floor(Math.random(possibleMoves.length))];
+  }
+
+  return best;
 }
 
 function waitResetInput(turn) {
@@ -128,25 +211,9 @@ function setScore(winner) {
   }
 }
 
-const onCellClickEvent = function (e) {
-  onCellClick(this, turn, score);
-  e.stopPropagation();
-};
-
-function onCellClick(element, turn, score) {
-  // assert we start from turn number 0, and X goes first
-
-  // checking if the box is already taken
-  if (element.innerHTML) return;
-  const current = turn.number % 2 == 0 ? "X" : "O";
-  const other = turn.number % 2 != 0 ? "X" : "O";
-  const currentTurn = document.getElementById("currentTurn");
-
-  element.innerHTML = current;
-  const isWinner = checkWinner(turn.number, score);
-
+function verifyStopConditions(turn, current) {
+  const isWinner = checkWinner(turn.number, cellData, true);
   if (isWinner) {
-    // Update message
     document.getElementById("winner").innerHTML =
       "Winner is " + current + ". Click anywhere to restart";
 
@@ -155,18 +222,73 @@ function onCellClick(element, turn, score) {
 
     // Freeze the board and wait for reset click
     waitResetInput(turn);
-    return;
+    return 1;
   }
-
   if (turn.number >= 8) {
-    // Update message
     document.getElementById("winner").innerHTML = "It's a draw :((";
     waitResetInput(turn);
+    return 1;
+  }
+
+  return 0;
+}
+
+function computerMove(turn) {
+  const poz = getBestMove(turn.number);
+  cell[poz].innerHTML = "O";
+  cellData[poz] = "O";
+  if (verifyStopConditions(turn, "O")) {
+    return;
+  }
+  turn.number++;
+  currentTurn.innerHTML = current;
+}
+
+const onCellClickEvent = function (e) {
+  onCellClick(this, turn, autoPlay, score);
+  e.stopPropagation();
+};
+
+function onCellClick(element, turn, autoPlay, score) {
+  // assert we start from turn number 0, and X goes first
+  // element is the table data the user clicked on
+
+  // checking if the box is already taken
+  if (element.innerHTML) return;
+
+  const current = turn.number % 2 == 0 ? "X" : "O";
+  const other = turn.number % 2 != 0 ? "X" : "O";
+  const currentTurn = document.getElementById("currentTurn");
+
+  element.innerHTML = current;
+  const cellPoz = cell.findIndex((elem) => elem == element);
+  cellData[cellPoz] = current;
+
+  if (verifyStopConditions(turn, current)) {
     return;
   }
 
   turn.number++;
   currentTurn.innerHTML = other;
+
+  if (autoPlay.on) {
+    //TODO: fake thinking
+
+    computerMove(turn);
+    // const poz = getBestMove(turn.number);
+    // cell[poz].innerHTML = other;
+    // cellData[poz] = other;
+
+    // if (verifyStopConditions(turn, other)) {
+    //   return;
+    // }
+
+    // turn.number++;
+    // currentTurn.innerHTML = current;
+  }
 }
 
 resetBoard(turn);
+document.getElementById("autoPlay-btn").addEventListener("click", function (e) {
+  flipAutoPlayBtn(turn);
+});
